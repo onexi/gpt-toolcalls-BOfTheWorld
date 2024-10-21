@@ -59,7 +59,7 @@ const execute = async (action, username, password) => {
 const details = {
     type: 'function',
     function: {
-        name: 'credentialsLogin',
+        name: 'credentialLogin',
         parameters: {
             type: 'object',
             properties: {
