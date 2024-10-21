@@ -1,8 +1,8 @@
 import { appendFile, writeFile } from 'fs/promises';
 import { existsSync, readFileSync } from 'fs';
 import { join } from 'path';
+import { execute as saveLocation } from './lastLogInLocation.js'; // Import the location-saving function
 
-// Function to generate a unique 18-digit alphanumeric UserID
 function generateUniqueUserID(existingIDs) {
     let userID;
     const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
@@ -12,27 +12,25 @@ function generateUniqueUserID(existingIDs) {
     return userID;
 }
 
-// Function to check if a username already exists
 function isUsernameExists(username) {
     const filePath = join(process.cwd(), './functions/credentials.csv');
 
     if (!existsSync(filePath)) {
-        return false; // File does not exist, so the username does not exist.
+        return false;
     }
 
     const data = readFileSync(filePath, 'utf8');
-    const lines = data.trim().split('\n').slice(1); // Skip the header
+    const lines = data.trim().split('\n').slice(1);
 
     for (const line of lines) {
         const [, storedUsername] = line.split(',');
         if (storedUsername === username) {
-            return true; // Username already exists
+            return true;
         }
     }
     return false;
 }
 
-// Main execute function for handling signup actions
 const execute = async (action, username, password) => {
     const filePath = join(process.cwd(), './functions/credentials.csv');
     const header = 'UserID,Username,Password\n';
@@ -40,34 +38,30 @@ const execute = async (action, username, password) => {
 
     try {
         if (action === 'signup') {
-            // Check if the username already exists
             if (isUsernameExists(username)) {
                 return { error: 'Username already exists. Please choose a different one.' };
             }
 
-            // Check if the file exists and read existing IDs
             if (existsSync(filePath)) {
                 const data = readFileSync(filePath, 'utf8');
-                const lines = data.trim().split('\n').slice(1); // Skip header
+                const lines = data.trim().split('\n').slice(1);
                 for (const line of lines) {
                     const [userID] = line.split(',');
                     existingIDs.add(userID);
                 }
             } else {
-                // If the file does not exist, write the header
                 await writeFile(filePath, header);
             }
 
-            // Generate a unique UserID
             const userID = generateUniqueUserID(existingIDs);
-
-            // Prepare the new CSV entry
             const newEntry = `${userID},${username},${password}\n`;
-
-            // Append the new entry to the file
             await appendFile(filePath, newEntry);
-            console.log('Signup successful:', { userID, username, password });
-            return { userID, username, password };
+            console.log('Signup successful:', { userID, username });
+
+            // Save the location after successful signup
+            await saveLocation('store', username);
+
+            return { userID, username };
         } else {
             return { error: 'Invalid action specified' };
         }
@@ -77,7 +71,6 @@ const execute = async (action, username, password) => {
     }
 };
 
-// Details for integration with the server and OpenAI API
 const details = {
     type: 'function',
     function: {
@@ -101,7 +94,7 @@ const details = {
             required: ['action', 'username', 'password'],
         },
     },
-    description: 'Function to sign up a new user, ensuring the username is unique and generating a unique UserID.',
+    description: 'Function to sign up a new user, ensuring the username is unique, generating a unique UserID, and saving the location.',
 };
 
 export { execute, details };

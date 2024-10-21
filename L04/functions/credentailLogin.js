@@ -1,5 +1,6 @@
-import { readFileSync } from 'fs';
+import { readFileSync, existsSync } from 'fs';
 import { join } from 'path';
+import { execute as saveLocation } from './lastLogInLocation.js'; // Import the location-saving function
 
 // Function to verify user credentials
 function verifyCredentials(username, password) {
@@ -27,12 +28,20 @@ function verifyCredentials(username, password) {
 const execute = async (action, username, password) => {
     try {
         if (action === 'login') {
-            // Verify the credentials
             const result = verifyCredentials(username, password);
 
             if (result.success) {
                 console.log(`Login successful for user: ${result.username}`);
-                return { userID: result.userID, username: result.username };
+
+                // Save the location after successful login
+                const locationResult = await saveLocation('store', username);
+                if (locationResult.error) {
+                    console.error('Error saving location:', locationResult.error);
+                    return { error: 'Login successful, but failed to save location.' };
+                }
+
+                // Return the user data and location
+                return { userID: result.userID, username: result.username, location: locationResult.location };
             } else {
                 console.error(result.message);
                 return { error: result.message };
@@ -70,7 +79,7 @@ const details = {
             required: ['action', 'username', 'password'],
         },
     },
-    description: 'Function to log in a user using username and password.',
+    description: 'Function to log in a user using username and password, and save the location upon successful login.',
 };
 
 export { execute, details };
